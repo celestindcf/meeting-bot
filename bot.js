@@ -178,7 +178,7 @@ async function handleCommand(interaction) {
   }
 
   if (commandName === 'panel') {
-    const panelUrl = `https://meeting-bot-production-716d.up.railway.app/?guild=${guildId}`;
+    const panelUrl = `http://localhost:${PORT}/panel?guild=${guildId}`;
     const embed = new EmbedBuilder()
       .setTitle('🖥️ Panel de gestion des réunions')
       .setColor(0x57F287)
@@ -597,6 +597,16 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Fix pour Replit — route /panel explicite
+app.get('/panel', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Catch-all : toute route inconnue renvoie le panel
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // Auth middleware
 function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -711,6 +721,16 @@ app.post('/api/subjects', authMiddleware, (req, res) => {
   subjects[guildId] = [...(subjects[guildId] || []), subject];
   saveDB('subjects', subjects);
   res.json(subject);
+});
+
+app.delete('/api/subjects/:id', authMiddleware, (req, res) => {
+  const { guildId } = req.user;
+  const subjects = loadDB('subjects');
+  const idx = (subjects[guildId] || []).findIndex(s => s.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Sujet introuvable' });
+  subjects[guildId].splice(idx, 1);
+  saveDB('subjects', subjects);
+  res.json({ success: true });
 });
 
 // ─── Staff Routes ─────────────────────────────────────────────────────────────
