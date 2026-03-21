@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MeetingBot — Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0b0f;
+    --surface: #12141a;
+    --surface2: #1a1d26;
+    --border: #22263a;
+    --accent: #7c6dfa;
+    --accent2: #fa6d9a;
+    --accent3: #6dfac2;
+    --text: #e8eaf0;
+    --muted: #5a607a;
+    --warning: #fac96d;
+    --danger: #fa6d6d;
+    --success: #6dfac2;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── Noise texture overlay ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ─── Auth Screen ─── */
+  #auth-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, #1a1040 0%, var(--bg) 70%);
+  }
+
+  .auth-card {
+    width: 440px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .auth-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+  }
+
+  .auth-header {
+    padding: 36px 36px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .auth-logo {
+    font-family: var(--font-head);
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 6px;
+  }
+
+  .auth-logo span { color: var(--accent); }
+
+  .auth-subtitle {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .auth-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .auth-tab {
+    flex: 1;
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .auth-tab.active {
+    color: var(--accent);
+    background: rgba(124,109,250,0.08);
+    border-bottom: 2px solid var(--accent);
+  }
+
+  .auth-body { padding: 28px 36px 36px; }
+
+  .guild-input-wrap {
+    margin-bottom: 20px;
+    padding: 14px;
+    background: rgba(124,109,250,0.06);
+    border: 1px solid rgba(124,109,250,0.2);
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
+  .guild-input-wrap #guild-name {
+    font-weight: 700;
+    font-family: var(--font-head);
+    font-size: 14px;
+    color: var(--text);
+    display: block;
+    margin-top: 4px;
+  }
+
+  .field {
+    margin-bottom: 16px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .field input {
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  .field input:focus { border-color: var(--accent); }
+
+  .btn-primary {
+    width: 100%;
+    padding: 13px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--font-head);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    transition: opacity 0.2s, transform 0.1s;
+    margin-top: 8px;
+  }
+
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .auth-error {
+    padding: 10px 14px;
+    background: rgba(250,109,109,0.1);
+    border: 1px solid rgba(250,109,109,0.3);
+    border-radius: 4px;
+    color: var(--danger);
+    font-size: 12px;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  /* ─── App Layout ─── */
+  #app { display: none; min-height: 100vh; }
+
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+  }
+
+  .sidebar-logo {
+    padding: 24px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-logo h1 {
+    font-family: var(--font-head);
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .sidebar-logo h1 span { color: var(--accent); }
+
+  .guild-info {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar-nav {
+    flex: 1;
+    padding: 16px 0;
+    overflow-y: auto;
+  }
+
+  .nav-section-label {
+    padding: 8px 20px 4px;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+    text-decoration: none;
+  }
+
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+
+  .nav-item.active {
+    color: var(--accent);
+    background: rgba(124,109,250,0.08);
+    border-left-color: var(--accent);
+  }
+
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    color: white;
+    font-family: var(--font-head);
+    flex-shrink: 0;
+  }
+
+  .user-info { overflow: hidden; }
+  .user-name { font-weight: 700; color: var(--text); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-role { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  .btn-logout {
+    width: 100%;
+    padding: 8px;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+
+  .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ─── Main Content ─── */
+  .main {
+    margin-left: 220px;
+    padding: 32px 40px;
+    min-height: 100vh;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .page-title {
+    font-family: var(--font-head);
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .page-title small {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 400;
+    letter-spacing: 0;
+    display: block;
+    margin-top: 4px;
+    font-family: var(--font-mono);
+  }
+
+  /* ─── Stats ─── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card:nth-child(1)::after { background: var(--accent); }
+  .stat-card:nth-child(2)::after { background: var(--accent2); }
+  .stat-card:nth-child(3)::after { background: var(--accent3); }
+  .stat-card:nth-child(4)::after { background: var(--warning); }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .stat-value {
+    font-family: var(--font-head);
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  /* ─── Cards ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 20px;
+  }
+
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title {
+    font-family: var(--font-head);
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .card-body { padding: 20px; }
+
+  /* ─── Table ─── */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .data-table td {
+    padding: 14px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    vertical-align: middle;
+  }
+
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* ─── Badges ─── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    font-family: var(--font-head);
+  }
+
+  .badge-purple { background: rgba(124,109,250,0.15); color: var(--accent); }
+  .badge-green { background: rgba(109,250,194,0.15); color: var(--accent3); }
+  .badge-red { background: rgba(250,109,109,0.15); color: var(--danger); }
+  .badge-yellow { background: rgba(250,201,109,0.15); color: var(--warning); }
+  .badge-pink { background: rgba(250,109,154,0.15); color: var(--accent2); }
+
+  /* ─── Buttons ─── */
+  .btn {
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    border: none;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-accent { background: var(--accent); color: white; }
+  .btn-accent:hover { opacity: 0.85; }
+  .btn-danger { background: rgba(250,109,109,0.15); color: var(--danger); border: 1px solid rgba(250,109,109,0.3); }
+  .btn-danger:hover { background: rgba(250,109,109,0.25); }
+  .btn-ghost { background: rgba(255,255,255,0.05); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: rgba(255,255,255,0.08); }
+  .btn-success { background: rgba(109,250,194,0.15); color: var(--success); border: 1px solid rgba(109,250,194,0.3); }
+
+  /* ─── Form ─── */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-full { grid-column: 1 / -1; }
+
+  .form-field { margin-bottom: 16px; }
+  .form-field label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .form-field input,
+  .form-field textarea,
+  .form-field select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: vertical;
+  }
+
+  .form-field input:focus,
+  .form-field textarea:focus,
+  .form-field select:focus { border-color: var(--accent); }
+
+  .form-field select option { background: var(--surface2); }
+
+  /* ─── Calendar ─── */
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .cal-cell {
+    background: var(--surface);
+    padding: 10px 8px;
+    min-height: 80px;
+    font-size: 11px;
+  }
+
+  .cal-day-label {
+    background: var(--surface2);
+    padding: 8px;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 700;
+    min-height: auto;
+  }
+
+  .cal-date {
+    font-family: var(--font-head);
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .cal-cell.today .cal-date { color: var(--accent); }
+  .cal-cell.other-month { opacity: 0.3; }
+
+  .cal-event {
+    background: rgba(124,109,250,0.2);
+    border-left: 2px solid var(--accent);
+    padding: 2px 5px;
+    border-radius: 2px;
+    margin-bottom: 2px;
+    font-size: 10px;
+    color: var(--accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+  }
+
+  /* ─── Modal ─── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    width: 520px;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    transform: translateY(20px);
+    transition: transform 0.2s;
+    position: relative;
+  }
+
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-title {
+    font-family: var(--font-head);
+    font-size: 17px;
+    font-weight: 800;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 20px;
+    padding: 4px;
+    line-height: 1;
+  }
+
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 24px; }
+
+  /* ─── Toast ─── */
+  .toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .toast {
+    padding: 12px 18px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 12px;
+    max-width: 300px;
+    animation: slideIn 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .toast.success { border-left: 3px solid var(--success); }
+  .toast.error { border-left: 3px solid var(--danger); }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ─── Vote bar ─── */
+  .vote-bar-wrap { background: var(--surface2); border-radius: 3px; height: 6px; flex: 1; overflow: hidden; }
+  .vote-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 3px; transition: width 0.5s; }
+
+  /* ─── Empty state ─── */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+  }
+
+  .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+  .empty-title { font-family: var(--font-head); font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+  .empty-desc { font-size: 12px; }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 900px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .sidebar { width: 60px; }
+    .sidebar .nav-item span, .sidebar .sidebar-logo h1, .sidebar .guild-info,
+    .sidebar .user-info, .sidebar .btn-logout, .sidebar .nav-section-label { display: none; }
+    .main { margin-left: 60px; padding: 20px; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Auth Screen -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="auth-logo">Meeting<span>Bot</span></div>
+      <div class="auth-subtitle">Panel de gestion — Staff Access</div>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')">Connexion</button>
+      <button class="auth-tab" onclick="switchTab('register')">Créer un compte</button>
+    </div>
+    <div class="auth-body">
+      <div class="guild-input-wrap">
+        <span>Serveur Discord</span>
+        <span id="guild-name">Chargement...</span>
+      </div>
+      <div class="auth-error" id="auth-error"></div>
+
+      <div id="login-form">
+        <div class="field"><label>Nom d'utilisateur</label><input type="text" id="login-username" placeholder="votre_pseudo"></div>
+        <div class="field"><label>Mot de passe</label><input type="password" id="login-password" placeholder="••••••••"></div>
+        <button class="btn-primary" onclick="login()">Se connecter →</button>
+      </div>
+
+      <div id="register-form" style="display:none">
+        <div class="field"><label>Nom d'utilisateur</label><input type="text" id="reg-username" placeholder="votre_pseudo"></div>
+        <div class="field"><label>Mot de passe</label><input type="password" id="reg-password" placeholder="Minimum 8 caractères"></div>
+        <div class="field"><label>Confirmer le mot de passe</label><input type="password" id="reg-confirm" placeholder="••••••••"></div>
+        <button class="btn-primary" onclick="register()">Créer le compte →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <h1>Meeting<span>Bot</span></h1>
+      <div class="guild-info" id="sidebar-guild">—</div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Navigation</div>
+      <a class="nav-item active" onclick="showPage('dashboard')">
+        <span class="icon">📊</span><span>Dashboard</span>
+      </a>
+      <a class="nav-item" onclick="showPage('calendar')">
+        <span class="icon">📅</span><span>Calendrier</span>
+      </a>
+      <a class="nav-item" onclick="showPage('meetings')">
+        <span class="icon">🗂️</span><span>Réunions</span>
+      </a>
+      <a class="nav-item" onclick="showPage('subjects')">
+        <span class="icon">💬</span><span>Sujets</span>
+      </a>
+      <div class="nav-section-label">Admin</div>
+      <a class="nav-item" id="nav-staff" onclick="showPage('staff')">
+        <span class="icon">👥</span><span>Staff</span>
+      </a>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-info">
+          <div class="user-name" id="user-name">—</div>
+          <div class="user-role" id="user-role" style="color: var(--muted);">—</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="logout()">⬅ Déconnexion</button>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- Dashboard -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div class="page-title">Dashboard <small>Vue d'ensemble</small></div>
+        <button class="btn btn-accent" onclick="openModal('modal-meeting')">+ Nouvelle réunion</button>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-label">Réunions planifiées</div><div class="stat-value" id="stat-upcoming">0</div></div>
+        <div class="stat-card"><div class="stat-label">Sujets proposés</div><div class="stat-value" id="stat-subjects">0</div></div>
+        <div class="stat-card"><div class="stat-label">Votes totaux</div><div class="stat-value" id="stat-votes">0</div></div>
+        <div class="stat-card"><div class="stat-label">Membres staff</div><div class="stat-value" id="stat-staff">0</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔜 Prochaines réunions</div>
+        </div>
+        <div class="card-body" id="upcoming-list">
+          <div class="empty-state"><div class="empty-icon">📅</div><div class="empty-title">Aucune réunion planifiée</div><div class="empty-desc">Créez votre première réunion</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🔥 Sujets les plus votés</div>
+        </div>
+        <div class="card-body" id="top-subjects">
+          <div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Aucun sujet</div><div class="empty-desc">Proposez des sujets de réunion</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calendar -->
+    <div class="page" id="page-calendar">
+      <div class="page-header">
+        <div class="page-title">Calendrier <small>Vue mensuelle des réunions</small></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-ghost" onclick="changeMonth(-1)">← Préc.</button>
+          <span id="cal-title" style="font-family:var(--font-head);font-weight:700;font-size:15px"></span>
+          <button class="btn btn-ghost" onclick="changeMonth(1)">Suiv. →</button>
+        </div>
+      </div>
+      <div id="calendar-container"></div>
+    </div>
+
+    <!-- Meetings -->
+    <div class="page" id="page-meetings">
+      <div class="page-header">
+        <div class="page-title">Réunions <small>Gestion des réunions</small></div>
+        <button class="btn btn-accent" onclick="openModal('modal-meeting')">+ Nouvelle réunion</button>
+      </div>
+      <div class="card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Titre</th><th>Date</th><th>Statut</th><th>Sujets</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="meetings-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Subjects -->
+    <div class="page" id="page-subjects">
+      <div class="page-header">
+        <div class="page-title">Sujets <small>Propositions et votes</small></div>
+        <button class="btn btn-accent" onclick="openModal('modal-subject')">+ Proposer un sujet</button>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Filtrer par réunion</div>
+          <select id="filter-reunion" onchange="loadSubjects()" style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-family:var(--font-mono);font-size:12px;outline:none">
+            <option value="">Tous les sujets</option>
+          </select>
+        </div>
+        <div id="subjects-list" class="card-body"></div>
+      </div>
+    </div>
+
+    <!-- Staff -->
+    <div class="page" id="page-staff">
+      <div class="page-header">
+        <div class="page-title">Staff <small>Gestion des membres</small></div>
+      </div>
+      <div class="card">
+        <table class="data-table">
+          <thead>
+            <tr><th>Utilisateur</th><th>Rôle</th><th>Créé le</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="staff-table"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal: Nouvelle réunion -->
+<div class="modal-overlay" id="modal-meeting">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📅 Nouvelle réunion</div>
+      <button class="modal-close" onclick="closeModal('modal-meeting')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-field form-full">
+          <label>Titre de la réunion</label>
+          <input type="text" id="m-titre" placeholder="Ex: Réunion hebdomadaire équipe">
+        </div>
+        <div class="form-field">
+          <label>Date & heure</label>
+          <input type="datetime-local" id="m-date">
+        </div>
+        <div class="form-field">
+          <label>Statut</label>
+          <select id="m-status">
+            <option value="planifiee">Planifiée</option>
+            <option value="en_cours">En cours</option>
+          </select>
+        </div>
+        <div class="form-field form-full">
+          <label>Description (optionnel)</label>
+          <textarea id="m-desc" rows="3" placeholder="Ordre du jour, informations..."></textarea>
+        </div>
+      </div>
+      <button class="btn btn-accent" onclick="createMeeting()" style="width:100%;padding:12px;margin-top:8px;font-size:14px">Créer la réunion</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nouveau sujet -->
+<div class="modal-overlay" id="modal-subject">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">💬 Proposer un sujet</div>
+      <button class="modal-close" onclick="closeModal('modal-subject')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field">
+        <label>Réunion concernée</label>
+        <select id="s-reunion">
+          <option value="">Sujet général</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Sujet</label>
+        <textarea id="s-texte" rows="4" placeholder="Décrivez le sujet que vous souhaitez aborder..."></textarea>
+      </div>
+      <button class="btn btn-accent" onclick="createSubject()" style="width:100%;padding:12px;font-size:14px">Proposer le sujet</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let token = localStorage.getItem('mb_token');
+let currentUser = JSON.parse(localStorage.getItem('mb_user') || 'null');
+let guildId = new URLSearchParams(location.search).get('guild') || '';
+let guildData = null;
+let meetings = [];
+let subjects = [];
+let calMonth = new Date();
+
+const API = ''; // Same origin
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+async function init() {
+  // Load guild info
+  if (guildId) {
+    try {
+      const res = await fetch(`${API}/api/guild/${guildId}`);
+      if (res.ok) {
+        guildData = await res.json();
+        document.getElementById('guild-name').textContent = guildData.name;
+        document.title = `MeetingBot — ${guildData.name}`;
+      }
+    } catch {}
+  }
+
+  if (token && currentUser) {
+    showApp();
+  }
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('login-form').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+  document.querySelectorAll('.auth-tab').forEach((el, i) => {
+    el.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
+  });
+  hideError();
+}
+
+function showError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideError() { document.getElementById('auth-error').style.display = 'none'; }
+
+async function login() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!username || !password) return showError('Remplissez tous les champs');
+
+  const res = await fetch(`${API}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, guildId })
+  });
+  const data = await res.json();
+  if (!res.ok) return showError(data.error || 'Erreur de connexion');
+
+  token = data.token;
+  currentUser = data.user;
+  localStorage.setItem('mb_token', token);
+  localStorage.setItem('mb_user', JSON.stringify(currentUser));
+  showApp();
+}
+
+async function register() {
+  const username = document.getElementById('reg-username').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const confirm = document.getElementById('reg-confirm').value;
+
+  if (!username || !password) return showError('Remplissez tous les champs');
+  if (password !== confirm) return showError('Les mots de passe ne correspondent pas');
+  if (password.length < 6) return showError('Minimum 6 caractères');
+
+  const res = await fetch(`${API}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, guildId })
+  });
+  const data = await res.json();
+  if (!res.ok) return showError(data.error || 'Erreur');
+
+  token = data.token;
+  currentUser = data.user;
+  localStorage.setItem('mb_token', token);
+  localStorage.setItem('mb_user', JSON.stringify(currentUser));
+  toast('Compte créé avec succès !', 'success');
+  showApp();
+}
+
+function logout() {
+  token = null; currentUser = null;
+  localStorage.removeItem('mb_token');
+  localStorage.removeItem('mb_user');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+function showApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  document.getElementById('user-name').textContent = currentUser.username;
+  document.getElementById('user-role').textContent = currentUser.role;
+  document.getElementById('user-role').style.color = currentUser.role === 'admin' ? 'var(--accent)' : 'var(--muted)';
+  document.getElementById('user-avatar').textContent = currentUser.username[0].toUpperCase();
+  document.getElementById('sidebar-guild').textContent = guildData?.name || guildId;
+
+  if (currentUser.role !== 'admin') {
+    document.getElementById('nav-staff').style.display = 'none';
+  }
+
+  loadAll();
+}
+
+async function apiGet(path) {
+  const res = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) { logout(); return []; }
+  return res.json();
+}
+
+async function apiPost(path, body) {
+  const res = await fetch(`${API}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+async function apiDelete(path) {
+  const res = await fetch(`${API}${path}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+  return res.json();
+}
+
+async function loadAll() {
+  meetings = await apiGet('/api/meetings');
+  subjects = await apiGet('/api/subjects');
+  renderDashboard();
+  renderMeetings();
+  renderSubjects();
+  renderCalendar();
+  if (currentUser.role === 'admin') renderStaff();
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const upcoming = meetings.filter(m => m.status !== 'annulee' && new Date(m.date) >= new Date()).sort((a, b) => new Date(a.date) - new Date(b.date));
+  const totalVotes = subjects.reduce((s, sub) => s + sub.votes, 0);
+
+  document.getElementById('stat-upcoming').textContent = upcoming.length;
+  document.getElementById('stat-subjects').textContent = subjects.length;
+  document.getElementById('stat-votes').textContent = totalVotes;
+
+  // Upcoming
+  const ul = document.getElementById('upcoming-list');
+  if (!upcoming.length) {
+    ul.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-title">Aucune réunion planifiée</div></div>';
+  } else {
+    ul.innerHTML = upcoming.slice(0, 5).map(m => {
+      const d = new Date(m.date);
+      const subs = subjects.filter(s => s.reunionId === m.id);
+      return `<div style="display:flex;align-items:center;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)">
+        <div style="background:rgba(124,109,250,0.1);border:1px solid rgba(124,109,250,0.2);border-radius:4px;padding:10px 14px;text-align:center;min-width:54px">
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:800;color:var(--accent);line-height:1">${d.getDate()}</div>
+          <div style="font-size:9px;text-transform:uppercase;color:var(--muted);letter-spacing:0.1em">${d.toLocaleDateString('fr-FR',{month:'short'})}</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-family:var(--font-head);font-weight:700;font-size:14px">${m.titre}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} · ${subs.length} sujet(s)</div>
+        </div>
+        <span class="badge badge-purple">${m.status}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Top subjects
+  const ts = document.getElementById('top-subjects');
+  const sorted = [...subjects].sort((a, b) => b.votes - a.votes).slice(0, 5);
+  const maxVotes = sorted[0]?.votes || 1;
+  if (!sorted.length) {
+    ts.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Aucun sujet</div></div>';
+  } else {
+    ts.innerHTML = sorted.map((s, i) => {
+      const pct = Math.round((s.votes / maxVotes) * 100);
+      const medals = ['🥇', '🥈', '🥉'];
+      return `<div style="margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <span style="font-size:18px">${medals[i] || `#${i+1}`}</span>
+          <span style="flex:1;font-size:13px;font-family:var(--font-head);font-weight:600">${s.texte}</span>
+          <span style="font-size:12px;color:var(--accent);font-weight:700">${s.votes} ▲</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="vote-bar-wrap"><div class="vote-bar" style="width:${pct}%"></div></div>
+          <span style="font-size:10px;color:var(--muted);min-width:30px">${pct}%</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ─── Meetings ─────────────────────────────────────────────────────────────────
+function renderMeetings() {
+  const tbody = document.getElementById('meetings-table');
+  if (!meetings.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🗂️</div><div class="empty-title">Aucune réunion</div></div></td></tr>';
+    return;
+  }
+  const sorted = [...meetings].sort((a, b) => new Date(b.date) - new Date(a.date));
+  tbody.innerHTML = sorted.map(m => {
+    const d = new Date(m.date);
+    const statusBadge = {
+      planifiee: 'badge-purple', en_cours: 'badge-green',
+      annulee: 'badge-red', terminee: 'badge-yellow'
+    }[m.status] || 'badge-purple';
+    const subs = subjects.filter(s => s.reunionId === m.id);
+    return `<tr>
+      <td><span style="font-family:var(--font-head);font-weight:700">${m.titre}</span><br><span style="font-size:11px;color:var(--muted)">${m.description || ''}</span></td>
+      <td style="font-size:12px">${d.toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'})} à ${d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td><span class="badge ${statusBadge}">${m.status}</span></td>
+      <td>${subs.length}</td>
+      <td>
+        <button class="btn btn-danger" onclick="cancelMeeting('${m.id}')" ${m.status === 'annulee' ? 'disabled' : ''}>Annuler</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function createMeeting() {
+  const titre = document.getElementById('m-titre').value.trim();
+  const date = document.getElementById('m-date').value;
+  const description = document.getElementById('m-desc').value.trim();
+
+  if (!titre || !date) return toast('Remplissez les champs obligatoires', 'error');
+
+  const data = await apiPost('/api/meetings', { titre, date, description });
+  if (data.error) return toast(data.error, 'error');
+
+  closeModal('modal-meeting');
+  document.getElementById('m-titre').value = '';
+  document.getElementById('m-date').value = '';
+  document.getElementById('m-desc').value = '';
+  toast('Réunion créée !', 'success');
+  await loadAll();
+}
+
+async function cancelMeeting(id) {
+  if (!confirm('Annuler cette réunion ?')) return;
+  await apiDelete(`/api/meetings/${id}`);
+  toast('Réunion annulée', 'success');
+  await loadAll();
+}
+
+// ─── Subjects ─────────────────────────────────────────────────────────────────
+function renderSubjects() {
+  // Fill select filters
+  const filter = document.getElementById('filter-reunion');
+  const sSelect = document.getElementById('s-reunion');
+  const opts = meetings.filter(m => m.status !== 'annulee').map(m => `<option value="${m.id}">${m.titre}</option>`).join('');
+  filter.innerHTML = '<option value="">Tous les sujets</option>' + opts;
+  sSelect.innerHTML = '<option value="">Sujet général</option>' + opts;
+
+  const filterVal = filter.value;
+  const filtered = filterVal ? subjects.filter(s => s.reunionId === filterVal) : subjects;
+  const sorted = [...filtered].sort((a, b) => b.votes - a.votes);
+  const maxVotes = sorted[0]?.votes || 1;
+
+  const container = document.getElementById('subjects-list');
+  if (!sorted.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Aucun sujet</div></div>';
+    return;
+  }
+
+  container.innerHTML = sorted.map((s, i) => {
+    const pct = maxVotes > 0 ? Math.round((s.votes / maxVotes) * 100) : 0;
+    const reunionName = meetings.find(m => m.id === s.reunionId)?.titre || 'Général';
+    return `<div style="padding:16px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <span style="font-size:20px">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `<span style='color:var(--muted);font-size:14px'>#${i+1}</span>`}</span>
+        <div style="flex:1">
+          <div style="font-family:var(--font-head);font-weight:700;font-size:14px">${s.texte}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Par ${s.proposePar} · ${reunionName}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:var(--font-head);font-weight:800;font-size:20px;color:var(--accent)">${s.votes}</div>
+          <div style="font-size:10px;color:var(--muted)">votes</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <div class="vote-bar-wrap"><div class="vote-bar" style="width:${pct}%"></div></div>
+        <span style="font-size:10px;color:var(--muted)">${pct}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function loadSubjects() { renderSubjects(); }
+
+async function createSubject() {
+  const texte = document.getElementById('s-texte').value.trim();
+  const reunionId = document.getElementById('s-reunion').value;
+  if (!texte) return toast('Entrez un sujet', 'error');
+
+  const data = await apiPost('/api/subjects', { texte, reunionId: reunionId || null });
+  if (data.error) return toast(data.error, 'error');
+
+  closeModal('modal-subject');
+  document.getElementById('s-texte').value = '';
+  toast('Sujet proposé !', 'success');
+  await loadAll();
+}
+
+// ─── Staff ────────────────────────────────────────────────────────────────────
+async function renderStaff() {
+  const staff = await apiGet('/api/staff');
+  document.getElementById('stat-staff').textContent = staff.length;
+
+  const tbody = document.getElementById('staff-table');
+  tbody.innerHTML = staff.map(u => `<tr>
+    <td>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:30px;height:30px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:var(--font-head)">${u.username[0].toUpperCase()}</div>
+        <span style="font-family:var(--font-head);font-weight:700">${u.username}</span>
+      </div>
+    </td>
+    <td><span class="badge ${u.role === 'admin' ? 'badge-purple' : 'badge-green'}">${u.role}</span></td>
+    <td style="font-size:12px;color:var(--muted)">${new Date(u.createdAt).toLocaleDateString('fr-FR')}</td>
+    <td>
+      ${u.id !== currentUser.id ? `
+        <button class="btn btn-ghost" onclick="toggleRole('${u.id}', '${u.role}')">
+          ${u.role === 'admin' ? '⬇ Rétrograder' : '⬆ Promouvoir'}
+        </button>
+      ` : '<span style="font-size:12px;color:var(--muted)">Vous</span>'}
+    </td>
+  </tr>`).join('');
+}
+
+async function toggleRole(id, currentRole) {
+  const newRole = currentRole === 'admin' ? 'staff' : 'admin';
+  await fetch(`${API}/api/staff/${id}/role`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ role: newRole })
+  });
+  toast('Rôle mis à jour', 'success');
+  renderStaff();
+}
+
+// ─── Calendar ─────────────────────────────────────────────────────────────────
+function renderCalendar() {
+  const year = calMonth.getFullYear();
+  const month = calMonth.getMonth();
+  const monthName = calMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  document.getElementById('cal-title').textContent = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startOffset = (firstDay.getDay() + 6) % 7; // Monday first
+
+  const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+  const today = new Date();
+
+  let html = '<div class="calendar-grid">';
+  days.forEach(d => html += `<div class="cal-cell cal-day-label">${d}</div>`);
+
+  // Empty cells
+  for (let i = 0; i < startOffset; i++) {
+    const prevDate = new Date(year, month, -startOffset + i + 1);
+    html += `<div class="cal-cell other-month"><div class="cal-date">${prevDate.getDate()}</div></div>`;
+  }
+
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const cellDate = new Date(year, month, d);
+    const isToday = cellDate.toDateString() === today.toDateString();
+    const dayMeetings = meetings.filter(m => {
+      const md = new Date(m.date);
+      return md.getFullYear() === year && md.getMonth() === month && md.getDate() === d && m.status !== 'annulee';
+    });
+
+    html += `<div class="cal-cell${isToday ? ' today' : ''}">
+      <div class="cal-date">${d}</div>
+      ${dayMeetings.map(m => `<div class="cal-event" title="${m.titre}">${m.titre}</div>`).join('')}
+    </div>`;
+  }
+
+  // Fill remaining
+  const total = startOffset + lastDay.getDate();
+  const remaining = 7 - (total % 7);
+  if (remaining < 7) {
+    for (let i = 1; i <= remaining; i++) {
+      html += `<div class="cal-cell other-month"><div class="cal-date">${i}</div></div>`;
+    }
+  }
+
+  html += '</div>';
+  document.getElementById('calendar-container').innerHTML = html;
+}
+
+function changeMonth(dir) {
+  calMonth.setMonth(calMonth.getMonth() + dir);
+  renderCalendar();
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  event.currentTarget?.classList.add('active');
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  renderSubjects(); // Refresh selects
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
+});
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span>${msg}</span>`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+init();
+</script>
+</body>
+</html>
