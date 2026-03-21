@@ -852,10 +852,17 @@
       </div>
       <div class="card">
         <div class="card-header">
-          <div class="card-title">Filtrer par réunion</div>
-          <select id="filter-reunion" onchange="loadSubjects()" style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-family:var(--font-mono);font-size:12px;outline:none">
-            <option value="">Tous les sujets</option>
-          </select>
+          <div class="card-title">Filtrer & trier</div>
+          <div style="display:flex;gap:8px">
+            <select id="filter-reunion" onchange="renderSubjects()" style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-family:var(--font-mono);font-size:12px;outline:none">
+              <option value="">Toutes les réunions</option>
+            </select>
+            <select id="filter-sort" onchange="renderSubjects()" style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:4px;font-family:var(--font-mono);font-size:12px;outline:none">
+              <option value="votes">Trier par votes</option>
+              <option value="date">Trier par date</option>
+              <option value="alpha">Trier par ordre alphabétique</option>
+            </select>
+          </div>
         </div>
         <div id="subjects-list" class="card-body"></div>
       </div>
@@ -1196,48 +1203,70 @@ async function cancelMeeting(id) {
 
 // ─── Subjects ─────────────────────────────────────────────────────────────────
 function renderSubjects() {
-  // Fill select filters
   const filter = document.getElementById('filter-reunion');
   const sSelect = document.getElementById('s-reunion');
   const opts = meetings.filter(m => m.status !== 'annulee').map(m => `<option value="${m.id}">${m.titre}</option>`).join('');
-  filter.innerHTML = '<option value="">Tous les sujets</option>' + opts;
+  filter.innerHTML = '<option value="">Toutes les réunions</option>' + opts;
   sSelect.innerHTML = '<option value="">Sujet général</option>' + opts;
 
   const filterVal = filter.value;
-  const filtered = filterVal ? subjects.filter(s => s.reunionId === filterVal) : subjects;
-  const sorted = [...filtered].sort((a, b) => b.votes - a.votes);
-  const maxVotes = sorted[0]?.votes || 1;
+  const sortVal = document.getElementById('filter-sort')?.value || 'votes';
+  let filtered = filterVal ? subjects.filter(s => s.reunionId === filterVal) : [...subjects];
 
+  if (sortVal === 'votes') filtered.sort((a, b) => b.votes - a.votes);
+  else if (sortVal === 'date') filtered.sort((a, b) => new Date(b.proposeAt) - new Date(a.proposeAt));
+  else if (sortVal === 'alpha') filtered.sort((a, b) => a.texte.localeCompare(b.texte));
+
+  const maxVotes = filtered[0]?.votes || 1;
   const container = document.getElementById('subjects-list');
-  if (!sorted.length) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Aucun sujet</div></div>';
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-title">Aucun sujet</div><div class="empty-desc">Proposez des sujets depuis Discord ou le panel</div></div>';
     return;
   }
 
-  container.innerHTML = sorted.map((s, i) => {
+  const medals = ['🥇','🥈','🥉'];
+  container.innerHTML = filtered.map((s, i) => {
     const pct = maxVotes > 0 ? Math.round((s.votes / maxVotes) * 100) : 0;
     const reunionName = meetings.find(m => m.id === s.reunionId)?.titre || 'Général';
+    const rank = sortVal === 'votes' ? (medals[i] || `<span style='color:var(--muted);font-size:13px'>#${i+1}</span>`) : `<span style='color:var(--muted);font-size:13px'>#${i+1}</span>`;
     return `<div style="padding:16px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-        <span style="font-size:20px">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `<span style='color:var(--muted);font-size:14px'>#${i+1}</span>`}</span>
+        <span style="font-size:20px;min-width:28px;text-align:center">${rank}</span>
         <div style="flex:1">
           <div style="font-family:var(--font-head);font-weight:700;font-size:14px">${s.texte}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">Par ${s.proposePar} · ${reunionName}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:8px">
+            <span>👤 ${s.proposePar}</span>
+            <span class="badge badge-purple" style="font-size:9px">${reunionName}</span>
+            <span>📅 ${new Date(s.proposeAt).toLocaleDateString('fr-FR')}</span>
+          </div>
         </div>
-        <div style="text-align:right">
-          <div style="font-family:var(--font-head);font-weight:800;font-size:20px;color:var(--accent)">${s.votes}</div>
-          <div style="font-size:10px;color:var(--muted)">votes</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="text-align:right">
+            <div style="font-family:var(--font-head);font-weight:800;font-size:22px;color:var(--accent)">${s.votes}</div>
+            <div style="font-size:10px;color:var(--muted)">votes</div>
+          </div>
+          <button class="btn btn-danger" onclick="deleteSubject('${s.id}')" title="Supprimer" style="padding:7px 10px">🗑️</button>
         </div>
       </div>
-      <div style="display:flex;gap:10px;align-items:center">
+      <div style="display:flex;gap:10px;align-items:center;margin-left:40px">
         <div class="vote-bar-wrap"><div class="vote-bar" style="width:${pct}%"></div></div>
-        <span style="font-size:10px;color:var(--muted)">${pct}%</span>
+        <span style="font-size:10px;color:var(--muted);min-width:30px">${pct}%</span>
       </div>
     </div>`;
   }).join('');
 }
 
 function loadSubjects() { renderSubjects(); }
+
+async function deleteSubject(id) {
+  if (!confirm('Supprimer ce sujet définitivement ?')) return;
+  await fetch(`${API}/api/subjects/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+  subjects = subjects.filter(s => s.id !== id);
+  renderSubjects();
+  renderDashboard();
+  toast('Sujet supprimé', 'success');
+}
 
 async function createSubject() {
   const texte = document.getElementById('s-texte').value.trim();
