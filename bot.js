@@ -178,7 +178,7 @@ async function handleCommand(interaction) {
   }
 
   if (commandName === 'panel') {
-    const panelUrl = `https://meeting-bot-production-716d.up.railway.app/?guild=${guildId}`;
+    const panelUrl = `https://meeting-bot-9now.onrender.com/?guild=${guildId}`;
     const embed = new EmbedBuilder()
       .setTitle('🖥️ Panel de gestion des réunions')
       .setColor(0x57F287)
