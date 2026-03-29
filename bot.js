@@ -12,7 +12,7 @@ const CLIENT_ID = process.env.CLIENT_ID || 'YOUR_CLIENT_ID';
 const JWT_SECRET = process.env.JWT_SECRET || 'secret-key';
 const PORT = process.env.PORT || 3000;
 const MONGO_URL = process.env.MONGO_URL || 'mongodb+srv://cdevaux112_db_user:39lSnyFFMsXw58w9@meeting-bot-1.pit4jyx.mongodb.net/?appName=meeting-bot-1';
-const PANEL_URL = process.env.PANEL_URL || 'http://localhost:3000';
+const PANEL_URL = process.env.PANEL_URL || 'https://meeting-bot-9now.onrender.com';
 
 let db;
 async function connectDB() {
