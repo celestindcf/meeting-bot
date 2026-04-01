@@ -6,12 +6,13 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { MongoClient } = require('mongodb');
 const path = require('path');
+const { checkLicence, isPremium } = require('./licenceChecker');
 
 const BOT_TOKEN = process.env.BOT_TOKEN || 'YOUR_BOT_TOKEN';
 const CLIENT_ID = process.env.CLIENT_ID || 'YOUR_CLIENT_ID';
 const JWT_SECRET = process.env.JWT_SECRET || 'secret-key';
 const PORT = process.env.PORT || 3000;
-const MONGO_URL = process.env.MONGO_URL || 'mongodb+srv://cdevaux112_db_user:39lSnyFFMsXw58w9@meeting-bot-1.pit4jyx.mongodb.net/?appName=meeting-bot-1';
+const MONGO_URL = process.env.MONGO_URL || 'YOUR_MONGO_URL';
 const PANEL_URL = process.env.PANEL_URL || 'https://meeting-bot-9now.onrender.com';
 
 let db;
@@ -33,6 +34,23 @@ const STAFF_LEVELS = {
 function genPassword(len = 12) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
   return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+// ─── Message d'erreur licence ─────────────────────────────────────────────────
+function noLicenceEmbed() {
+  return new EmbedBuilder()
+    .setTitle('❌ Licence requise')
+    .setColor(0xED4245)
+    .setDescription('Ce serveur n\'a pas de licence active pour MeetingBot.\nContactez-nous pour obtenir une licence !')
+    .setFooter({ text: 'NCL Services' });
+}
+
+function noPremiumEmbed(feature) {
+  return new EmbedBuilder()
+    .setTitle('⭐ Fonctionnalité Premium')
+    .setColor(0xFEE75C)
+    .setDescription(`**${feature}** est réservé aux serveurs Premium.\nPassez en premium pour débloquer cette fonctionnalité !`)
+    .setFooter({ text: 'NCL Services' });
 }
 
 const discordClient = new Client({
@@ -88,7 +106,7 @@ async function registerCommands() {
   } catch (e) { console.error('❌', e); }
 }
 
-discordClient.once('clientReady', async () => {
+discordClient.once('ready', async () => {
   console.log(`🤖 ${discordClient.user.tag} connecté !`);
   await registerCommands();
 });
@@ -109,21 +127,35 @@ discordClient.on('interactionCreate', async (interaction) => {
 async function handleCommand(interaction) {
   const { commandName, options, guildId, user, guild } = interaction;
 
-  if (commandName === 'setup') {
-    const channel = options.getChannel('canal_reunions');
-    const role = options.getRole('role_chef');
-    await col('configs').updateOne({ guildId }, { $set: { guildId, meetingChannel: channel.id, chefRole: role?.id || null, setupBy: user.id, setupAt: new Date().toISOString() } }, { upsert: true });
-    const embed = new EmbedBuilder().setTitle('⚙️ Configuration enregistrée').setColor(0x5865F2)
-      .addFields({ name: '📢 Canal', value: `<#${channel.id}>`, inline: true }, { name: '👑 Chef', value: role ? `<@&${role.id}>` : 'Non défini', inline: true });
-    await interaction.reply({ embeds: [embed], ephemeral: true });
-    return;
+  // ── Commandes sans vérification licence ──
+  if (commandName === 'setup' || commandName === 'panel') {
+    if (commandName === 'setup') {
+      const channel = options.getChannel('canal_reunions');
+      const role = options.getRole('role_chef');
+      await col('configs').updateOne({ guildId }, { $set: { guildId, meetingChannel: channel.id, chefRole: role?.id || null, setupBy: user.id, setupAt: new Date().toISOString() } }, { upsert: true });
+      const embed = new EmbedBuilder().setTitle('⚙️ Configuration enregistrée').setColor(0x5865F2)
+        .addFields({ name: '📢 Canal', value: `<#${channel.id}>`, inline: true }, { name: '👑 Chef', value: role ? `<@&${role.id}>` : 'Non défini', inline: true });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
+      return;
+    }
+    if (commandName === 'panel') {
+      const embed = new EmbedBuilder().setTitle('🖥️ Panel des réunions').setColor(0x57F287)
+        .setDescription(`🔗 **[Ouvrir le panel](${PANEL_URL}/?guild=${guildId})**`)
+        .setFooter({ text: guild.name });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
+      return;
+    }
   }
 
-  if (commandName === 'panel') {
-    const embed = new EmbedBuilder().setTitle('🖥️ Panel des réunions').setColor(0x57F287)
-      .setDescription(`🔗 **[Ouvrir le panel](${PANEL_URL}/?guild=${guildId})**`)
-      .setFooter({ text: guild.name });
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+  // ── Vérification licence pour toutes les autres commandes ──
+  const licence = await checkLicence(guildId);
+  if (!licence.valid) {
+    const reasons = {
+      NO_LICENCE: 'Ce serveur n\'a pas de licence active.',
+      BLOCKED: 'La licence de ce serveur a été révoquée.',
+      EXPIRED: 'La licence de ce serveur a expiré.'
+    };
+    await interaction.reply({ embeds: [new EmbedBuilder().setTitle('❌ Licence requise').setColor(0xED4245).setDescription(reasons[licence.reason] || 'Licence invalide. Contactez-nous !')], ephemeral: true });
     return;
   }
 
@@ -325,6 +357,7 @@ async function handleModal(interaction) {
   }
 }
 
+// ─── Express API ──────────────────────────────────────────────────────────────
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -450,6 +483,11 @@ app.get('/api/guild/:guildId', async (req, res) => {
   const guild = discordClient.guilds.cache.get(req.params.guildId);
   if (!guild) return res.status(404).json({ error: 'Serveur introuvable' });
   res.json({ id: guild.id, name: guild.name, icon: guild.iconURL(), memberCount: guild.memberCount });
+});
+
+// Catch-all pour le panel
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 async function start() {
