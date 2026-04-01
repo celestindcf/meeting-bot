@@ -4,7 +4,7 @@
 
 const LICENCE_SERVER_URL = process.env.LICENCE_SERVER_URL || 'https://ncl-licences.onrender.com';
 const API_SECRET = process.env.API_SECRET || 'api-secret-key'; // Doit être identique au serveur de licences
-const BOT_NAME = process.env.BOT_NAME || 'modbot'; // 'modbot' ou 'meetingbot'
+const BOT_NAME = process.env.BOT_NAME || 'meetingbot'; // 'modbot' ou 'meetingbot'
 
 // Cache pour éviter trop de requêtes
 const licenceCache = new Map(); // guildId -> { valid, type, isPremium, cachedAt }
