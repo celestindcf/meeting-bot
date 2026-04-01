@@ -161,18 +161,6 @@ async function handleCommand(interaction) {
     return;
   }
 
-  // ── Vérification licence pour toutes les autres commandes ──
-  const licence = await checkLicence(guildId);
-  if (!licence.valid) {
-    const reasons = {
-      NO_LICENCE: 'Ce serveur n\'a pas de licence active.',
-      BLOCKED: 'La licence de ce serveur a été révoquée.',
-      EXPIRED: 'La licence de ce serveur a expiré.'
-    };
-    await interaction.reply({ embeds: [new EmbedBuilder().setTitle('❌ Licence requise').setColor(0xED4245).setDescription(reasons[licence.reason] || 'Licence invalide. Contactez-nous !')], ephemeral: true });
-    return;
-  }
-
   if (commandName === 'staffadd') {
     const target = options.getUser('membre');
     const username = options.getString('username');
