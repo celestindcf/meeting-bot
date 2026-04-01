@@ -127,24 +127,38 @@ discordClient.on('interactionCreate', async (interaction) => {
 async function handleCommand(interaction) {
   const { commandName, options, guildId, user, guild } = interaction;
 
-  // ── Commandes sans vérification licence ──
-  if (commandName === 'setup' || commandName === 'panel') {
-    if (commandName === 'setup') {
-      const channel = options.getChannel('canal_reunions');
-      const role = options.getRole('role_chef');
-      await col('configs').updateOne({ guildId }, { $set: { guildId, meetingChannel: channel.id, chefRole: role?.id || null, setupBy: user.id, setupAt: new Date().toISOString() } }, { upsert: true });
-      const embed = new EmbedBuilder().setTitle('⚙️ Configuration enregistrée').setColor(0x5865F2)
-        .addFields({ name: '📢 Canal', value: `<#${channel.id}>`, inline: true }, { name: '👑 Chef', value: role ? `<@&${role.id}>` : 'Non défini', inline: true });
-      await interaction.reply({ embeds: [embed], ephemeral: true });
-      return;
-    }
-    if (commandName === 'panel') {
-      const embed = new EmbedBuilder().setTitle('🖥️ Panel des réunions').setColor(0x57F287)
-        .setDescription(`🔗 **[Ouvrir le panel](${PANEL_URL}/?guild=${guildId})**`)
-        .setFooter({ text: guild.name });
-      await interaction.reply({ embeds: [embed], ephemeral: true });
-      return;
-    }
+ // 1. On vérifie la licence pour TOUT le monde directement
+  const licence = await checkLicence(guildId);
+  if (!licence.valid) {
+    const reasons = {
+      NO_LICENCE: 'Ce serveur n\'a pas de licence active.',
+      BLOCKED: 'La licence de ce serveur a été révoquée.',
+      EXPIRED: 'La licence de ce serveur a expiré.'
+    };
+    await interaction.reply({ 
+        embeds: [new EmbedBuilder().setTitle('❌ Licence requise').setColor(0xED4245).setDescription(reasons[licence.reason] || 'Licence invalide. Contactez-nous !')], 
+        ephemeral: true 
+    });
+    return;
+  }
+
+  // 2. Si la licence est OK, on traite les commandes
+  if (commandName === 'setup') {
+    const channel = options.getChannel('canal_reunions');
+    const role = options.getRole('role_chef');
+    await col('configs').updateOne({ guildId }, { $set: { guildId, meetingChannel: channel.id, chefRole: role?.id || null, setupBy: user.id, setupAt: new Date().toISOString() } }, { upsert: true });
+    const embed = new EmbedBuilder().setTitle('⚙️ Configuration enregistrée').setColor(0x5865F2)
+      .addFields({ name: '📢 Canal', value: `<#${channel.id}>`, inline: true }, { name: '👑 Chef', value: role ? `<@&${role.id}>` : 'Non défini', inline: true });
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+    return;
+  }
+
+  if (commandName === 'panel') {
+    const embed = new EmbedBuilder().setTitle('🖥️ Panel des réunions').setColor(0x57F287)
+      .setDescription(`🔗 **[Ouvrir le panel](${PANEL_URL}/?guild=${guildId})**`)
+      .setFooter({ text: guild.name });
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+    return;
   }
 
   // ── Vérification licence pour toutes les autres commandes ──
